@@ -1,165 +1,358 @@
 "use strict";
+
+/* ================================================================
+   SƠ ĐỒ FILE
+   1. Cấu hình và trạng thái
+   2. Hàm dùng chung cho dữ liệu, giá và số lượng tối thiểu
+   3. Menu, bộ lọc và danh sách sản phẩm
+   4. Popup chi tiết sản phẩm
+   5. Giỏ hàng / bảng giá
+   6. WeChat, sao chép và giao diện chung
+   7. Các sự kiện click, nhập liệu
+   ================================================================ */
+
+/* 1. CẤU HÌNH VÀ TRẠNG THÁI ------------------------------------ */
+const isProductsPage = document.body.dataset.page === "products";
+const WECHAT_ID = "abv1234";
+const BRAND_NAME = "Nic Massage Supply";
+
 const state = {
   category: "all",
   search: "",
   sort: "featured",
-  stock: false,
   page: 1,
-  featuredOnly: true,
+  featuredOnly: !isProductsPage,
   current: null,
-  cart: load("jin-cart"),
-  wishlist: load("jin-wishlist")
+  currentOptionIndex: 0,
+  selection: loadSelection(),
+  contactText: ""
 };
-const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-function load(k) { try { return JSON.parse(localStorage.getItem(k)) || [] } catch { return [] } }
-function save() { localStorage.setItem("jin-cart", JSON.stringify(state.cart)); localStorage.setItem("jin-wishlist", JSON.stringify(state.wishlist)) }
-function money(n) { return new Intl.NumberFormat("en-US", { style: "currency", currency: STORE.currency }).format(n) }
-function product(id) { return PRODUCTS.find(p => p.id === Number(id)) }
-function allCats() { return CATEGORY_MENU.flatMap(g => [{ ...g, isGroup: true }, ...g.children.map(c => ({ ...c, group: g.key }))]) }
-function label(key) { if (key === "all") return { zh: "所有产品", en: "All Products" }; return allCats().find(c => c.key === key) || { zh: "产品", en: "Products" } }
 
-function renderNav() {
-  $("#dynamicNav").innerHTML = `<li><button type="button" class="nav-link" data-category="all"><span>所有产品</span><small>All Products</small></button></li>${CATEGORY_MENU.map(g => `<li class="has-dropdown"><button class="nav-link dropdown-toggle" data-category="${g.key}"><span>${g.zh}</span><small>${g.en}</small><i>⌄</i></button><div class="dropdown"><button data-category="${g.key}"><b>全部${g.zh}</b><small>All ${g.en}</small></button>${g.children.map(c => `<button data-category="${c.key}"><b>${c.zh}</b><small>${c.en}</small></button>`).join("")}</div></li>`).join("")}<li><a class="nav-link" href="#how-to-order"><span>联系我们</span><small>Contact</small></a></li>`;
+const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
+
+function loadJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; }
+  catch { return []; }
 }
 
-function filtered() {
-  const q = state.search.trim().toLowerCase();
+function loadSelection() {
+  const current = loadJson("nic-price-list");
+  if (current.length) return current;
 
-  let arr = PRODUCTS.filter(p => {
-    const correctCategory =
-      state.category === "all" ||
-      p.group === state.category ||
-      p.category === state.category;
+  /* Chuyển dữ liệu từ phiên bản Jin cũ sang Nic một lần. */
+  const oldPriceList = loadJson("jin-price-list");
+  if (oldPriceList.length) return oldPriceList;
 
-    const correctStock = !state.stock || p.inStock;
+  return loadJson("jin-cart").map(item => ({
+    key: item.key || `${item.id}::${item.size || "base"}`,
+    id: Number(item.id),
+    qty: Number(item.qty || 1),
+    optionZh: item.size || "",
+    optionEn: item.size || "",
+    price: Number(item.price || 0)
+  }));
+}
 
-    const searchableText = [
-      p.nameZh || "",
-      p.nameEn || "",
-      p.categoryZh || "",
-      p.categoryEn || "",
-      p.descriptionZh || "",
-      p.descriptionEn || "",
-      ...(p.featuresZh || []),
-      ...(p.featuresEn || [])
-    ].join(" ").toLowerCase();
+function saveSelection() {
+  localStorage.setItem("nic-price-list", JSON.stringify(state.selection));
+}
 
-    const correctSearch = !q || searchableText.includes(q);
+function money(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: STORE.currency
+  }).format(Number(value || 0));
+}
 
-    return correctCategory && correctStock && correctSearch;
+function priceText(value) {
+  return Number(value) > 0 ? money(value) : "询价 · Contact for price";
+}
+
+/* 2. HÀM DÙNG CHUNG CHO DỮ LIỆU SẢN PHẨM ----------------------- */
+function productUnit(p) {
+  return String(p?.unit || "件").trim() || "件";
+}
+
+function minimumOrderQty(p) {
+  const quantity = Math.floor(Number(p?.minOrderQty || 1));
+  return quantity > 0 ? quantity : 1;
+}
+
+function priceMeta(p, value) {
+  const unit = productUnit(p);
+  const minimum = minimumOrderQty(p);
+  const unitText = Number(value) > 0 ? `<small class="price-unit">/ ${unit}</small>` : "";
+  const minimumText = minimum > 1
+    ? `<small class="minimum-order">(${minimum}${unit}起订)</small>`
+    : "";
+
+  return `${unitText}${minimumText}`;
+}
+
+function product(id) {
+  return PRODUCTS.find(item => item.id === Number(id));
+}
+
+function allCats() {
+  return CATEGORY_MENU.flatMap(group => [
+    { ...group, isGroup: true },
+    ...group.children.map(child => ({ ...child, group: group.key }))
+  ]);
+}
+
+function categoryLabel(key) {
+  if (key === "all") return { zh: "所有产品", en: "All Products" };
+  return allCats().find(item => item.key === key) || { zh: "产品", en: "Products" };
+}
+
+function optionConfig(p) {
+  const config = p?.optionConfig;
+
+  if (
+    config &&
+    Array.isArray(config.items) &&
+    config.items.length
+  ) {
+    return config;
+  }
+
+  // Không có optionConfig thì trả về null để giao diện không hiện mục lựa chọn.
+  return null;
+}
+
+function productOptions(p) {
+  const config = optionConfig(p);
+
+  // Vẫn tạo một lựa chọn nội bộ để lấy đúng giá sản phẩm,
+  // nhưng lựa chọn này không được hiển thị trên giao diện.
+  return config
+    ? config.items
+    : [{
+        labelZh: "",
+        labelEn: "",
+        price: Number(p?.price || 0),
+        default: true
+      }];
+}
+
+function selectedOption(p, index = 0) {
+  const options = productOptions(p);
+  return options[Number(index)] || options[0];
+}
+
+function cleanOptionLabel(value) {
+  const text = String(value ?? "").trim();
+
+  // Không hiển thị hai tên mặc định này ở bất kỳ đâu.
+  if (/^standard$/i.test(text) || text === "标准款") return "";
+
+  return text;
+}
+
+function optionDisplay(option) {
+  const zh = cleanOptionLabel(option?.labelZh);
+  const en = cleanOptionLabel(option?.labelEn);
+
+  if (zh && en) return zh === en ? zh : `${zh} · ${en}`;
+  return zh || en || "";
+}
+
+function minimumPrice(p) {
+  const known = productOptions(p).map(item => Number(item.price || 0)).filter(value => value > 0);
+  return known.length ? Math.min(...known) : 0;
+}
+
+/* 3. MENU, BỘ LỌC VÀ DANH SÁCH SẢN PHẨM ----------------------- */
+function renderNav() {
+  const nav = $("#dynamicNav");
+  if (!nav) return;
+
+  nav.innerHTML = `
+    <li><a class="nav-link" href="products.html"><span>所有产品</span><small>All Products</small></a></li>
+    ${CATEGORY_MENU.map(group => `
+      <li class="has-dropdown">
+        <a class="nav-link dropdown-toggle" href="products.html?category=${group.key}"><span>${group.zh}</span><small>${group.en}</small><i>⌄</i></a>
+        <div class="dropdown">
+          <a href="products.html?category=${group.key}"><b>全部${group.zh}</b><small>All ${group.en}</small></a>
+          ${group.children.map(child => `<a href="products.html?category=${child.key}"><b>${child.zh}</b><small>${child.en}</small></a>`).join("")}
+        </div>
+      </li>`).join("")}
+    <li><a class="nav-link nav-contact" href="${isProductsPage ? "index.html#how-to-order" : "#how-to-order"}"><span>联系我们</span><small>Contact</small></a></li>`;
+}
+
+function renderCategoryTabs() {
+  const tabs = $("#categoryTabs");
+  if (!tabs) return;
+
+  const items = [
+    { key: "all", zh: "所有产品", en: "All Products" },
+    ...CATEGORY_MENU.map(group => ({ key: group.key, zh: group.zh, en: group.en }))
+  ];
+
+  tabs.innerHTML = items.map(item => `
+    <button type="button" data-filter-category="${item.key}" class="${state.category === item.key ? "active" : ""}">
+      ${item.zh} <small>${item.en}</small>
+    </button>`).join("");
+}
+
+function filteredProducts() {
+  const query = state.search.trim().toLowerCase();
+  let list = PRODUCTS.filter(p => {
+    const matchesCategory = state.category === "all" || p.group === state.category || p.category === state.category;
+    const searchable = [
+      String(p.id), `product-${p.id}`,
+      p.nameZh, p.nameEn, p.categoryZh, p.categoryEn,
+      p.descriptionZh, p.descriptionEn,
+      ...(p.featuresZh || []), ...(p.featuresEn || []),
+      ...productOptions(p).flatMap(item => [item.labelZh, item.labelEn])
+    ].filter(Boolean).join(" ").toLowerCase();
+    return matchesCategory && (!query || searchable.includes(query));
   });
 
   if (state.featuredOnly) {
-    return arr
-      .filter(p => p.featured === true)
-      .sort((a, b) => a.id - b.id)
-      .slice(0, 8);
+    return list.filter(p => p.featured === true).sort((a, b) => a.id - b.id).slice(0, 4);
   }
-
-  if (state.sort === "low") {
-    return arr.sort((a, b) => a.price - b.price);
-  }
-
-  if (state.sort === "high") {
-    return arr.sort((a, b) => b.price - a.price);
-  }
-
-  if (state.sort === "name") {
-    return arr.sort((a, b) =>
-      (a.nameEn || "").localeCompare(b.nameEn || "")
-    );
-  }
-
-  return arr.sort((a, b) =>
-    Number(b.featured) - Number(a.featured) || a.id - b.id
-  );
+  if (state.sort === "low") return list.sort((a, b) => minimumPrice(a) - minimumPrice(b));
+  if (state.sort === "high") return list.sort((a, b) => minimumPrice(b) - minimumPrice(a));
+  if (state.sort === "name") return list.sort((a, b) => (a.nameEn || "").localeCompare(b.nameEn || ""));
+  return list.sort((a, b) => Number(b.featured) - Number(a.featured) || a.id - b.id);
 }
 
-function card(p) { const wished = state.wishlist.includes(p.id); return `<article class="product-card" data-id="${p.id}"><div class="product-media"><img src="${p.image}" alt="${p.nameEn}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><div class="image-fallback" hidden>${p.nameEn}</div>${p.badgeEn ? `<span class="badge">${p.badgeZh} ${p.badgeEn}</span>` : ""}<button class="wish ${wished ? "active" : ""}" data-action="wish">${wished ? "♥" : "♡"}</button><button class="quick" data-action="quick">快速查看 Quick View</button></div><div class="product-info"><small>${p.categoryZh} · ${p.categoryEn}</small><h3>${p.nameZh}<span>${p.nameEn}</span></h3><div class="price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="availability ${p.inStock ? "yes" : "no"}">${p.inStock ? "● 有货 In stock" : "● 暂时缺货 Out of stock"}</p><button class="add" data-action="cart" ${p.inStock ? "" : "disabled"}>${p.inStock ? "+ 加入购物车 Add to Cart" : "暂时缺货 Out of Stock"}</button></div></article>` }
+function productCard(p) {
+  const options = productOptions(p);
+  const minPrice = minimumPrice(p);
+  const price = minPrice > 0
+    ? money(minPrice)
+    : priceText(0);
+
+  return `<article class="product-card" data-id="${p.id}">
+    <div class="product-media">
+      <img src="${p.image}" alt="${p.nameEn || p.nameZh}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false;this.closest('.product-card').classList.add('has-image-error')">
+      <div class="image-fallback" hidden><span>${p.nameEn || p.nameZh}</span><small>Missing image · ID: ${p.id}</small></div>
+      ${p.badgeZh || p.badgeEn ? `<span class="badge">${[p.badgeZh, p.badgeEn].filter(Boolean).join(" · ")}</span>` : ""}
+    </div>
+    <div class="product-info">
+      <div class="product-meta">
+        <small class="product-category">${p.categoryZh} · ${p.categoryEn}</small>
+        <small class="product-id" title="Folder: product-${p.id}">ID: ${p.id}</small>
+      </div>
+      <h3>${p.nameZh}${p.nameEn ? `<span>${p.nameEn}</span>` : ""}</h3>
+      <div class="price">
+        ${options.length > 1 ? '<small class="price-from">From</small>' : ""}
+        <div class="price-row"><span class="price-value">${price}</span>${priceMeta(p, minPrice)}${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div>
+      </div>
+      <div class="product-card-actions">
+        <button class="add contact-product" data-action="contact" type="button"> <span>微信咨询购买</span><span>Contact WeChat</span></button>
+        <button class="selection-card-add" data-action="selection" type="button" title="加入价格清单 Add to Price List" aria-label="Add to price list">🛒</button>
+      </div>
+    </div>
+  </article>`;
+}
 
 function renderProducts() {
-  const list = filtered(), pages = Math.max(1, Math.ceil(list.length / STORE.perPage)); state.page = Math.min(state.page, pages); const visible = list.slice((state.page - 1) * STORE.perPage, state.page * STORE.perPage), l = label(state.category);
-  $("#productsTitle").innerHTML = `${l.zh} <span>${l.en}</span>`; $("#resultCount").textContent = `找到 ${list.length} 件产品 · ${list.length} products found`; $("#productGrid").innerHTML = visible.map(card).join(""); $("#emptyState").hidden = !!list.length; $("#productGrid").hidden = !list.length;
-  $$(".dropdown-toggle[data-category]").forEach(el => {
-    const category = allCats().find(
-        item => item.key === state.category
-    );
+  const grid = $("#productGrid");
+  if (!grid) return;
 
-    el.classList.toggle(
-        "active",
-        el.dataset.category === state.category ||
-        el.dataset.category === category?.group
-    );
-});
-  $("#pagination").innerHTML = pages < 2 ? "" : `<button data-page="${state.page - 1}" ${state.page === 1 ? "disabled" : ""}>←</button>${Array.from({ length: pages }, (_, i) => `<button data-page="${i + 1}" class="${state.page === i + 1 ? "active" : ""}">${i + 1}</button>`).join("")}<button data-page="${state.page + 1}" ${state.page === pages ? "disabled" : ""}>→</button>`;
-}
+  const list = filteredProducts();
+  const pages = state.featuredOnly ? 1 : Math.max(1, Math.ceil(list.length / STORE.perPage));
+  state.page = Math.min(state.page, pages);
+  const visible = state.featuredOnly
+    ? list
+    : list.slice((state.page - 1) * STORE.perPage, state.page * STORE.perPage);
+  const label = state.featuredOnly ? { zh: "精选产品", en: "Featured Products" } : categoryLabel(state.category);
 
-function selectCategory(key, scroll = true) {
-  state.category = allCats().some(c => c.key === key) ? key : "all";
-  state.featuredOnly = false;
-  state.page = 1;
-  renderProducts();
-  closeMobile();
-  if (scroll) {
-    $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#productsTitle").innerHTML = `${label.zh} <span>${label.en}</span>`;
+  $("#resultCount").textContent = state.featuredOnly
+    ? "精选 4 件产品 · 4 featured products"
+    : `找到 ${list.length} 件产品 · ${list.length} products found`;
+  grid.innerHTML = visible.map(productCard).join("");
+  $("#emptyState").hidden = Boolean(list.length);
+  grid.hidden = !list.length;
+  renderCategoryTabs();
+
+  const pagination = $("#pagination");
+  if (pagination) {
+    pagination.innerHTML = pages < 2 ? "" : `
+      <button data-page="${state.page - 1}" ${state.page === 1 ? "disabled" : ""}>←</button>
+      ${Array.from({ length: pages }, (_, index) => `<button data-page="${index + 1}" class="${state.page === index + 1 ? "active" : ""}">${index + 1}</button>`).join("")}
+      <button data-page="${state.page + 1}" ${state.page === pages ? "disabled" : ""}>→</button>`;
   }
 }
-function reset() {
-  state.category = "all";
-  state.search = "";
-  state.sort = "featured";
-  state.stock = false;
-  state.page = 1;
-  state.featuredOnly = true;
-  $("#searchInput").value = "";
-  $("#sortSelect").value = "featured";
-  $("#stockOnly").checked = false;
-  renderProducts();
-}
 
+/* 4. POPUP CHI TIẾT SẢN PHẨM ----------------------------------- */
 function galleryImages(p) {
-  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
-  return [...new Set([p.image, ...images].filter(Boolean))];
+  return [...new Set([p.image, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean))];
 }
 
-function changeModalImage(imagePath, productName) {
-  const image = $("#modalImage"), fallback = $("#modalFallback");
-  image.src = imagePath;
-  image.alt = productName || "Product image";
+function changeModalImage(path, name) {
+  const image = $("#modalImage");
+  const fallback = $("#modalFallback");
+  image.src = path;
+  image.alt = name || "Product image";
   image.hidden = false;
   fallback.hidden = true;
   image.onerror = () => {
     image.hidden = true;
     fallback.hidden = false;
-    fallback.textContent = productName || "Product image";
+    fallback.textContent = name || "Product image";
   };
-  $$(".modal-thumbnail").forEach(button => button.classList.toggle("active", button.dataset.image === imagePath));
+  $$(".modal-thumbnail").forEach(button => button.classList.toggle("active", button.dataset.image === path));
 }
 
 function renderModalGallery(p) {
   const images = galleryImages(p);
   $("#modalThumbnails").innerHTML = images.map((src, index) => `
-    <button type="button" class="modal-thumbnail ${index === 0 ? "active" : ""}" data-image="${src}" data-index="${index}" aria-label="View image ${index + 1}">
-      <img src="${src}" alt="${p.nameEn} ${index + 1}" loading="lazy" onerror="this.closest('.modal-thumbnail').hidden=true">
+    <button type="button" class="modal-thumbnail ${index === 0 ? "active" : ""}" data-image="${src}" data-index="${index}">
+      <img src="${src}" alt="${p.nameEn || p.nameZh} ${index + 1}" onerror="this.closest('.modal-thumbnail').hidden=true">
     </button>`).join("");
   $("#modalThumbnails").hidden = images.length < 2;
-  changeModalImage(images[0] || p.image, p.nameEn);
+  changeModalImage(images[0] || p.image, p.nameEn || p.nameZh);
+}
+
+function renderModalOptions(p) {
+  const config = p?.optionConfig;
+  const wrap = $("#modalOptionWrap");
+
+  if (!config || !Array.isArray(config.items) || !config.items.length) {
+    state.currentOptionIndex = 0;
+    wrap.hidden = true;
+    $("#modalOption").innerHTML = "";
+    updateModalPrice();
+    return;
+  }
+
+  state.currentOptionIndex = Math.max(0, config.items.findIndex(item => item.default === true));
+  $("#modalOptionLabel").textContent = `${config.nameZh || "选择选项"} · ${config.nameEn || "Select Option"}`;
+  $("#modalOption").innerHTML = config.items.map((option, index) => `
+    <option value="${index}" ${index === state.currentOptionIndex ? "selected" : ""}>${optionDisplay(option)} — ${priceText(option.price)} / ${productUnit(p)}</option>`).join("");
+  wrap.hidden = false;
+  updateModalPrice();
+}
+
+function updateModalPrice() {
+  const p = product(state.current);
+  if (!p) return;
+  const option = selectedOption(p, state.currentOptionIndex);
+  $("#modalPrice").innerHTML = `<span class="price-value">${priceText(option.price)}</span>${priceMeta(p, option.price)}${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}`;
 }
 
 function openModal(p) {
   if (!p) return;
   state.current = p.id;
-  $("#modalCategory").textContent = `${p.categoryZh} · ${p.categoryEn}`;
-  $("#modalName").innerHTML = `${p.nameZh}<span>${p.nameEn}</span>`;
-  $("#modalPrice").innerHTML = `${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}`;
-  $("#modalDescription").innerHTML = `${p.descriptionZh}<br><span>${p.descriptionEn}</span>`;
-  $("#modalFeatures").innerHTML = p.featuresZh.map((x, i) => `<li>${x} <span>${p.featuresEn[i] || ""}</span></li>`).join("");
+  $("#modalCategory").textContent = `${p.categoryZh} · ${p.categoryEn} · ID: ${p.id}`;
+  $("#modalName").innerHTML = `${p.nameZh}${p.nameEn ? `<span>${p.nameEn}</span>` : ""}`;
+  $("#modalDescription").innerHTML = [p.descriptionZh, p.descriptionEn ? `<span>${p.descriptionEn}</span>` : ""].filter(Boolean).join("<br>");
+  $("#modalFeatures").innerHTML = (p.featuresZh || []).map((text, index) => `<li>${text} <span>${p.featuresEn?.[index] || ""}</span></li>`).join("");
   renderModalGallery(p);
-  $("#modalCart").disabled = !p.inStock;
-  updateModalWish();
+  renderModalOptions(p);
   $("#quickView").classList.add("show");
-  $(".overlay").classList.add("show");
-  document.body.classList.add("locked");
+  showOverlay();
+}
+
+function closeModal() {
+  $("#quickView")?.classList.remove("show");
+  refreshOverlay();
 }
 
 function openLightbox(index) {
@@ -170,7 +363,6 @@ function openLightbox(index) {
   const safeIndex = (Number(index) + images.length) % images.length;
   $("#imageLightbox").dataset.index = safeIndex;
   $("#lightboxImage").src = images[safeIndex];
-  $("#lightboxImage").alt = `${p.nameEn} ${safeIndex + 1}`;
   $("#lightboxCounter").textContent = `${safeIndex + 1} / ${images.length}`;
   $("#lightboxPrev").hidden = images.length < 2;
   $("#lightboxNext").hidden = images.length < 2;
@@ -179,53 +371,423 @@ function openLightbox(index) {
 }
 
 function closeLightbox() {
-  $("#imageLightbox").classList.remove("show");
-  $("#imageLightbox").setAttribute("aria-hidden", "true");
+  $("#imageLightbox")?.classList.remove("show");
+  $("#imageLightbox")?.setAttribute("aria-hidden", "true");
 }
 
 function moveLightbox(step) {
   openLightbox(Number($("#imageLightbox").dataset.index || 0) + step);
 }
 
-function closeModal() { $("#quickView").classList.remove("show"); if (!$(".drawer.open")) { $(".overlay").classList.remove("show"); document.body.classList.remove("locked") } }
-function updateModalWish() { const on = state.wishlist.includes(state.current); $("#modalWish").classList.toggle("active", on); $("#modalWish").textContent = on ? "♥" : "♡" }
+/* 5. GIỎ HÀNG / BẢNG GIÁ --------------------------------------- */
+function addToSelection(id, optionIndex = 0) {
+  const p = product(id);
+  if (!p) return;
 
-function addCart(id) { const p = product(id); if (!p || !p.inStock) return; const old = state.cart.find(x => x.id === p.id); old ? old.qty++ : state.cart.push({ id: p.id, qty: 1 }); save(); renderCart(); toast(`已加入购物车 · Added ${p.nameEn}`) }
-function toggleWish(id) { const p = product(id); if (!p) return; state.wishlist = state.wishlist.includes(p.id) ? state.wishlist.filter(x => x !== p.id) : [...state.wishlist, p.id]; save(); renderWish(); renderProducts(); updateModalWish(); toast(`心愿单已更新 · Wishlist updated`) }
-function itemRow(p, actions) { return `<article class="drawer-item" data-id="${p.id}"><img src="${p.image}" alt=""><div><h3>${p.nameZh}<span>${p.nameEn}</span></h3><strong>${money(p.price)}</strong>${actions}</div></article>` }
-function renderCart() { let total = 0, count = 0; $("#cartList").innerHTML = state.cart.map(x => { const p = product(x.id); if (!p) return ""; total += p.price * x.qty; count += x.qty; return itemRow(p, `<div class="quantity"><button data-cart="minus">−</button><span>${x.qty}</span><button data-cart="plus">+</button><button data-cart="remove">删除</button></div>`) }).join(""); $(".cart-count").textContent = count; $("#subtotal").textContent = money(total); $("#cartEmpty").hidden = !!state.cart.length }
-function renderWish() { const list = state.wishlist.map(product).filter(Boolean); $("#wishlistList").innerHTML = list.map(p => itemRow(p, `<div class="quantity"><button data-wish="cart">Add to Cart</button><button data-wish="remove">删除</button></div>`)).join(""); $(".wishlist-count").textContent = list.length; $("#wishlistEmpty").hidden = !!list.length }
-function openDrawer(el) { closeModal(); $$('.drawer').forEach(x => x.classList.remove('open')); el.classList.add('open'); $(".overlay").classList.add("show"); document.body.classList.add("locked") }
-function closeDrawers() { $$('.drawer').forEach(x => x.classList.remove('open')); $(".overlay").classList.remove("show"); document.body.classList.remove("locked") }
-function toast(t) { $(".toast").textContent = t; $(".toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $(".toast").classList.remove("show"), 2200) }
-function closeMobile() { $("#dynamicNav").classList.remove("open"); $$('.has-dropdown').forEach(x => x.classList.remove('open')) }
+  const config = optionConfig(p);
+  const option = selectedOption(p, optionIndex);
+  const optionZh = cleanOptionLabel(option?.labelZh);
+  const optionEn = cleanOptionLabel(option?.labelEn);
 
-document.addEventListener("click", e => {
-  const toggle = e.target.closest('.dropdown-toggle'); if (toggle && matchMedia('(max-width:900px)').matches) { e.preventDefault(); const li = toggle.closest('.has-dropdown'), was = li.classList.contains('open'); $$('.has-dropdown').forEach(x => x.classList.remove('open')); li.classList.toggle('open', !was); return }
-  const cat = e.target.closest('[data-category]'); if (cat) { e.preventDefault(); selectCategory(cat.dataset.category); return }
-  if (e.target.closest('.show-all')) {
-    state.featuredOnly = false;
-    state.category = 'all';
+  // "base" chỉ là mã nội bộ, không hiển thị cho khách.
+  const optionKey = config
+    ? (optionEn || optionZh || `option-${Number(optionIndex) || 0}`)
+    : "base";
+
+  const key = `${p.id}::${optionKey}`;
+  const existing = state.selection.find(item => item.key === key);
+  const minimum = minimumOrderQty(p);
+
+  if (existing) {
+    existing.qty = Number(existing.qty || 0) + minimum;
+  } else {
+    state.selection.push({
+      key,
+      id: p.id,
+      qty: minimum,
+      optionZh,
+      optionEn,
+      price: Number(option?.price || p.price || 0),
+      unit: productUnit(p),
+      minOrderQty: minimum
+    });
+  }
+
+  saveSelection();
+  renderSelection();
+  toast(`已加入价格清单 · Added ${p.nameEn || p.nameZh}`);
+}
+
+function selectionRow(p, item) {
+  const config = optionConfig(p);
+  const option = config
+    ? optionDisplay({
+        labelZh: item.optionZh,
+        labelEn: item.optionEn
+      })
+    : "";
+
+  const optionName = config
+    ? (config.nameZh || config.nameEn || "")
+    : "";
+
+  const optionLine = option
+    ? `<small class="drawer-size">${optionName ? `${optionName}: ` : ""}${option}</small>`
+    : "";
+
+  const safeKey = encodeURIComponent(item.key);
+  const minimum = minimumOrderQty(p);
+
+  return `<article class="drawer-item" data-key="${safeKey}" data-id="${p.id}">
+    <img src="${p.image}" alt="${p.nameEn || p.nameZh}">
+    <div>
+      <h3>${p.nameZh}${p.nameEn ? `<span>${p.nameEn}</span>` : ""}</h3>
+      ${optionLine}
+      <div class="drawer-price"><strong>${priceText(item.price)}</strong>${priceMeta(p, item.price)}</div>
+      <div class="quantity">
+        <button data-selection="minus" type="button" aria-label="减少数量" ${item.qty <= minimum ? "disabled" : ""}>−</button>
+        <span>${item.qty}</span>
+        <button data-selection="plus" type="button" aria-label="增加数量">+</button>
+        <button class="quantity-remove" data-selection="remove" type="button">删除 Remove</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderSelection() {
+  const valid = state.selection.filter(item => product(item.id));
+  state.selection = valid.map(item => {
+    const p = product(item.id);
+    const minimum = minimumOrderQty(p);
+    return {
+      ...item,
+      qty: Math.max(minimum, Number(item.qty || minimum)),
+      price: Number(item.price || 0),
+      unit: productUnit(p),
+      minOrderQty: minimum
+    };
+  });
+  saveSelection();
+
+  let total = 0;
+  let count = 0;
+  let quoteItems = 0;
+  $("#selectionList").innerHTML = state.selection.map(item => {
+    const p = product(item.id);
+    count += item.qty;
+    if (item.price > 0) total += item.price * item.qty;
+    else quoteItems += item.qty;
+    return selectionRow(p, item);
+  }).join("");
+
+  $(".selection-count").textContent = count;
+  $("#selectionSubtotal").textContent = money(total);
+  $("#selectionEmpty").hidden = Boolean(state.selection.length);
+  $("#clearSelection").disabled = !state.selection.length;
+  $("#selectionNote").textContent = quoteItems
+    ? `其中 ${quoteItems} 件需要询价 · ${quoteItems} item(s) require a quote.`
+    : "最终价格、运费和定制费用请通过微信确认。";
+}
+
+function clearSelection() {
+  state.selection = [];
+  saveSelection();
+  renderSelection();
+  toast("价格清单已清空 · Price list cleared");
+}
+
+function openSelectionDrawer() {
+  closeModal();
+  $("#selectionDrawer").classList.add("open");
+  showOverlay();
+}
+
+function closeDrawers() {
+  $$(".drawer").forEach(item => item.classList.remove("open"));
+  refreshOverlay();
+}
+
+function selectionSummary() {
+  if (!state.selection.length) return "";
+
+  let knownTotal = 0;
+
+  const lines = state.selection.map((item, index) => {
+    const p = product(item.id);
+    if (!p) return "";
+
+    const config = optionConfig(p);
+    const option = config
+      ? optionDisplay({
+          labelZh: item.optionZh,
+          labelEn: item.optionEn
+        })
+      : "";
+
+    const optionName = config
+      ? (config.nameZh || config.nameEn || "")
+      : "";
+
+    const optionLine = option
+      ? `\n   ${optionName ? `${optionName}：` : ""}${option}`
+      : "";
+
+    const lineTotal = Number(item.price || 0) * Number(item.qty || 1);
+    if (lineTotal > 0) knownTotal += lineTotal;
+
+    const unit = productUnit(p);
+    const minimum = minimumOrderQty(p);
+    const minimumLine = minimum > 1 ? `\n   起订量：${minimum}${unit}` : "";
+
+    return `${index + 1}. 产品：${p.nameZh}${optionLine}\n   数量：${item.qty}${unit}${minimumLine}\n   参考单价：${Number(item.price) > 0 ? `${money(item.price)} / ${unit}` : "请询价"}`;
+  }).filter(Boolean);
+
+  return `${BRAND_NAME} 产品询价清单\n\n${lines.join("\n\n")}\n\n参考小计：${money(knownTotal)}\n最终价格、运费及定制费用请微信确认。`;
+}
+
+function productContactText(p, option) {
+  if (!p) return "";
+
+  const config = optionConfig(p);
+  const optionText = config ? optionDisplay(option) : "";
+  const optionName = config
+    ? (config.nameZh || config.nameEn || "")
+    : "";
+
+  const optionLine = optionText
+    ? `
+${optionName ? `${optionName}：` : ""}${optionText}`
+    : "";
+
+  const unit = productUnit(p);
+  const minimum = minimumOrderQty(p);
+  const minimumLine = minimum > 1 ? `\n起订量：${minimum}${unit}` : "";
+
+  return `${BRAND_NAME} 产品询价
+产品：${p.nameZh}${optionLine}
+参考价格：${Number(option?.price) > 0 ? `${money(option.price)} / ${unit}` : priceText(p.price)}${minimumLine}
+请通过微信确认最终价格、运费和定制要求。`;
+}
+
+/* 6. WECHAT, SAO CHÉP VÀ GIAO DIỆN CHUNG ----------------------- */
+function openWechat(p = null, option = null, customText = "") {
+  closeModal();
+  closeDrawers();
+
+  const context = $("#wechatProductContext");
+  const copyButton = $("#copyProductInfo");
+  state.contactText = customText || productContactText(p, option || (p ? selectedOption(p, 0) : null));
+  if (copyButton) copyButton.textContent = "复制产品信息 · Copy Product";
+
+  if (state.contactText) {
+    context.hidden = false;
+    context.textContent = state.contactText;
+    copyButton.hidden = false;
+  } else {
+    context.hidden = true;
+    context.textContent = "";
+    copyButton.hidden = true;
+  }
+
+  $("#wechatPopup").classList.add("show");
+  showOverlay();
+}
+
+function handleOrderWechat() {
+  const summary = selectionSummary();
+  if (summary) {
+    openWechat(null, null, summary);
+    const copyButton = $("#copyProductInfo");
+    if (copyButton) copyButton.textContent = "复制价格清单 · Copy Price List";
+    return;
+  }
+
+  copyText(WECHAT_ID, "微信 ID 已复制 · WeChat ID copied");
+}
+
+function closeWechat() {
+  $("#wechatPopup")?.classList.remove("show");
+  refreshOverlay();
+}
+
+async function copyText(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    input.remove();
+  }
+  toast(successMessage);
+}
+
+function showOverlay() {
+  $(".overlay")?.classList.add("show");
+  document.body.classList.add("locked");
+}
+
+function refreshOverlay() {
+  const active = $("#quickView")?.classList.contains("show") || $(".drawer.open") || $("#wechatPopup")?.classList.contains("show");
+  if (!active) {
+    $(".overlay")?.classList.remove("show");
+    document.body.classList.remove("locked");
+  }
+}
+
+function closeAll() {
+  closeLightbox();
+  $("#quickView")?.classList.remove("show");
+  $$(".drawer").forEach(item => item.classList.remove("open"));
+  $("#wechatPopup")?.classList.remove("show");
+  $(".overlay")?.classList.remove("show");
+  document.body.classList.remove("locked");
+}
+
+function toast(text) {
+  const element = $(".toast");
+  if (!element) return;
+  element.textContent = text;
+  element.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => element.classList.remove("show"), 2400);
+}
+
+function closeMobile() {
+  $("#dynamicNav")?.classList.remove("open");
+  $$(".has-dropdown").forEach(item => item.classList.remove("open"));
+}
+
+/* 7. CÁC SỰ KIỆN CLICK, NHẬP LIỆU ------------------------------ */
+document.addEventListener("click", event => {
+  if (event.target.closest(".nav-contact")) closeMobile();
+
+  const mobileDropdown = event.target.closest(".dropdown-toggle");
+  if (mobileDropdown && matchMedia("(max-width:900px)").matches) {
+    const parent = mobileDropdown.closest(".has-dropdown");
+    if (parent) {
+      event.preventDefault();
+      const wasOpen = parent.classList.contains("open");
+      $$(".has-dropdown").forEach(item => item.classList.remove("open"));
+      parent.classList.toggle("open", !wasOpen);
+    }
+  }
+
+  const filterButton = event.target.closest("[data-filter-category]");
+  if (filterButton) {
+    state.category = filterButton.dataset.filterCategory;
     state.page = 1;
     renderProducts();
-    closeMobile();
-    $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
   }
-  if (e.target.closest('.reset')) { reset(); return }
 
-  const thumbnail = e.target.closest('.modal-thumbnail');
-  if (thumbnail) { changeModalImage(thumbnail.dataset.image, product(state.current)?.nameEn || 'Product'); return }
-  if (e.target.closest('#modalMainImage')) {
-    const active = $('.modal-thumbnail.active');
-    openLightbox(active ? Number(active.dataset.index) : 0);
-    return;
+  const card = event.target.closest(".product-card");
+  if (card) {
+    const p = product(card.dataset.id);
+    const action = event.target.closest("[data-action]")?.dataset.action;
+    if (!action || action === "quick") openModal(p);
+    if (action === "selection") addToSelection(p.id, 0);
+    if (action === "contact") openWechat(p, selectedOption(p, 0));
   }
-  if (e.target.closest('#lightboxClose') || e.target.id === 'imageLightbox') { closeLightbox(); return }
-  if (e.target.closest('#lightboxPrev')) { moveLightbox(-1); return }
-  if (e.target.closest('#lightboxNext')) { moveLightbox(1); return }
 
-  const c = e.target.closest('.product-card'); if (c) { const a = e.target.closest('[data-action]')?.dataset.action; if (a === 'quick') openModal(product(c.dataset.id)); if (a === 'cart') addCart(c.dataset.id); if (a === 'wish') toggleWish(Number(c.dataset.id)) }
+  if (event.target.closest(".order-wechat")) handleOrderWechat();
+  if (event.target.closest(".open-wechat")) openWechat();
+
+  const thumbnail = event.target.closest(".modal-thumbnail");
+  if (thumbnail) changeModalImage(thumbnail.dataset.image, product(state.current)?.nameEn);
+  if (event.target.closest("#modalMainImage")) openLightbox(Number($(".modal-thumbnail.active")?.dataset.index || 0));
+  if (event.target.closest("#lightboxClose") || event.target.id === "imageLightbox") closeLightbox();
+  if (event.target.closest("#lightboxPrev")) moveLightbox(-1);
+  if (event.target.closest("#lightboxNext")) moveLightbox(1);
 });
 
-document.addEventListener("DOMContentLoaded", () => { renderNav(); const q = new URLSearchParams(location.search).get('category'); if (q) state.category = q; renderProducts(); renderCart(); renderWish(); $("#searchInput").oninput = e => { state.search = e.target.value; state.page = 1; renderProducts() }; $("#sortSelect").onchange = e => { state.sort = e.target.value; renderProducts() }; $("#stockOnly").onchange = e => { state.stock = e.target.checked; renderProducts() }; $("#pagination").onclick = e => { const b = e.target.closest('[data-page]'); if (b && !b.disabled) { state.page = Number(b.dataset.page); renderProducts(); $("#products").scrollIntoView({ behavior: 'smooth' }) } }; $(".mobile-toggle").onclick = () => $("#dynamicNav").classList.toggle('open'); $(".cart-open").onclick = () => openDrawer($("#cartDrawer")); $(".wishlist-open").onclick = () => openDrawer($("#wishlistDrawer")); $$('.drawer-close').forEach(b => b.onclick = closeDrawers); $(".overlay").onclick = () => { closeModal(); closeDrawers() }; $(".modal-close").onclick = closeModal; $("#modalCart").onclick = () => addCart(state.current); $("#modalWish").onclick = () => toggleWish(state.current); $("#cartList").onclick = e => { const row = e.target.closest('.drawer-item'), a = e.target.dataset.cart; if (!row || !a) return; const x = state.cart.find(i => i.id === Number(row.dataset.id)); if (a === 'plus') x.qty++; if (a === 'minus') x.qty--; if (a === 'remove' || x.qty < 1) state.cart = state.cart.filter(i => i.id !== x.id); save(); renderCart() }; $("#wishlistList").onclick = e => { const row = e.target.closest('.drawer-item'), a = e.target.dataset.wish; if (!row || !a) return; a === 'cart' ? addCart(row.dataset.id) : toggleWish(Number(row.dataset.id)) }; document.onkeydown = e => { if (e.key === 'Escape') { closeLightbox(); closeModal(); closeDrawers(); closeMobile() } if ($('#imageLightbox').classList.contains('show') && e.key === 'ArrowLeft') moveLightbox(-1); if ($('#imageLightbox').classList.contains('show') && e.key === 'ArrowRight') moveLightbox(1) } });
+document.addEventListener("DOMContentLoaded", () => {
+  renderNav();
+
+  const queryCategory = new URLSearchParams(location.search).get("category");
+  if (queryCategory && allCats().some(item => item.key === queryCategory)) state.category = queryCategory;
+
+  renderProducts();
+  renderSelection();
+
+  $("#searchInput")?.addEventListener("input", event => {
+    state.search = event.target.value;
+    state.page = 1;
+    renderProducts();
+  });
+
+  $("#sortSelect")?.addEventListener("change", event => {
+    state.sort = event.target.value;
+    state.page = 1;
+    renderProducts();
+  });
+
+  $("#pagination")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-page]");
+    if (!button || button.disabled) return;
+    state.page = Number(button.dataset.page);
+    renderProducts();
+    $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  $(".mobile-toggle")?.addEventListener("click", () => $("#dynamicNav").classList.toggle("open"));
+  $(".selection-open")?.addEventListener("click", openSelectionDrawer);
+  $$(".drawer-close").forEach(button => button.addEventListener("click", closeDrawers));
+  $(".overlay")?.addEventListener("click", closeAll);
+  $(".modal-close")?.addEventListener("click", closeModal);
+  $(".wechat-popup-close")?.addEventListener("click", closeWechat);
+
+  $("#modalOption")?.addEventListener("change", event => {
+    state.currentOptionIndex = Number(event.target.value);
+    updateModalPrice();
+  });
+
+  $("#modalContact")?.addEventListener("click", () => {
+    const p = product(state.current);
+    openWechat(p, selectedOption(p, state.currentOptionIndex));
+  });
+
+  $("#modalSelection")?.addEventListener("click", () => addToSelection(state.current, state.currentOptionIndex));
+  $("#clearSelection")?.addEventListener("click", clearSelection);
+  $("#contactSelection")?.addEventListener("click", () => {
+    openWechat(null, null, selectionSummary());
+    const copyButton = $("#copyProductInfo");
+    if (copyButton && state.contactText) copyButton.textContent = "复制价格清单 · Copy Price List";
+  });
+  $("#copyWechat")?.addEventListener("click", () => copyText(WECHAT_ID, "微信 ID 已复制"));
+  $("#copyProductInfo")?.addEventListener("click", () => copyText(state.contactText, "产品信息已复制"));
+
+  $("#selectionList")?.addEventListener("click", event => {
+    const actionButton = event.target.closest("[data-selection]");
+    const row = event.target.closest(".drawer-item");
+    if (!row || !actionButton) return;
+
+    const action = actionButton.dataset.selection;
+    const key = decodeURIComponent(row.dataset.key || "");
+    const item = state.selection.find(entry => entry.key === key);
+    if (!item) return;
+    const p = product(item.id);
+    const minimum = minimumOrderQty(p);
+
+    if (action === "plus") item.qty = Number(item.qty || 0) + 1;
+    if (action === "minus") item.qty = Math.max(minimum, Number(item.qty || minimum) - 1);
+    if (action === "remove") {
+      state.selection = state.selection.filter(entry => entry.key !== item.key);
+    }
+
+    saveSelection();
+    renderSelection();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      closeAll();
+      closeMobile();
+    }
+    if ($("#imageLightbox")?.classList.contains("show") && event.key === "ArrowLeft") moveLightbox(-1);
+    if ($("#imageLightbox")?.classList.contains("show") && event.key === "ArrowRight") moveLightbox(1);
+  });
+});

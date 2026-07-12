@@ -1,1 +1,119 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=index.html#products"><title>Products</title></head><body><a href="index.html#products">View products</a><script>location.replace('index.html#products'+location.search)</script></body></html>
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nic Massage Supply — Professional massage and spa products">
+  <title>All Products — Nic Massage Supply</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="products">
+  <div class="topbar">满 $149 包邮 · Free shipping on orders over $149 &nbsp; | &nbsp; 微信下单 WeChat: abv1234</div>
+
+  <nav class="site-nav">
+    <div class="nav-inner">
+      <a class="logo" href="index.html"><span class="logo-mark" aria-hidden="true"><b>N</b></span><span><strong>Nic Massage Supply</strong><small><br>工厂直供 · 定制服务 · 品类齐全</small></span></a>
+      <button class="mobile-toggle" type="button" aria-label="Open menu">☰</button>
+      <ul class="nav-links" id="dynamicNav"></ul>
+      <div class="nav-actions">
+        <button class="selection-open" type="button" aria-label="Open price list" title="Price List"><span>🛒</span><b class="selection-count">0</b></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="products-section products-page" id="products">
+      <div class="section-inner">
+        <div class="section-heading compact-heading">
+          <div><p>产品中心 · PRODUCT CENTER</p><h2 id="productsTitle">所有产品 <span>All Products</span></h2><small id="resultCount"></small></div>
+          <a class="button outline" href="index.html">返回首页 Back Home</a>
+        </div>
+        <div class="category-tabs product-category-tabs" id="categoryTabs"></div>
+        <div class="tools">
+          <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="搜索产品 Search products..."></label>
+          <select id="sortSelect"><option value="featured">推荐 Featured</option><option value="low">价格低到高 Price: Low to High</option><option value="high">价格高到低 Price: High to Low</option><option value="name">名称 Name</option></select>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+        <div class="empty" id="emptyState" hidden><h3>没有找到产品 · No products found</h3></div>
+        <nav class="pagination" id="pagination"></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner"><div><strong>Nic Massage Supply</strong><p>专业按摩与SPA用品 · Professional massage and spa supplies.</p></div><div><p>WeChat: abv1234</p><p><button class="footer-contact open-wechat" type="button">Contact on WeChat</button></p></div></div>
+    <div class="copyright">© 2026 Nic Massage Supply. 版权所有 All rights reserved.</div>
+  </footer>
+
+  <div class="overlay"></div>
+
+  <div class="modal" id="quickView">
+    <div class="modal-box">
+      <button class="modal-close" type="button" aria-label="Close product detail">×</button>
+      <div class="modal-gallery">
+        <div class="modal-main-image" id="modalMainImage">
+          <img id="modalImage" src="" alt="" title="Click to zoom">
+          <div id="modalFallback" hidden></div>
+          <span class="zoom-label">⌕ Zoom</span>
+        </div>
+        <div class="modal-thumbnails" id="modalThumbnails" aria-label="Product images"></div>
+      </div>
+      <div class="modal-info">
+        <small id="modalCategory"></small>
+        <h2 id="modalName"></h2>
+        <div class="modal-price" id="modalPrice"></div>
+        <label class="option-picker" id="modalOptionWrap"><span id="modalOptionLabel">选择选项 · Select Option</span><select id="modalOption"></select></label>
+        <h3>产品描述 · Description</h3>
+        <p id="modalDescription"></p>
+        <ul id="modalFeatures"></ul>
+        <div class="modal-actions contact-actions">
+          <button class="button primary" id="modalContact" type="button">微信咨询购买</br>Contact WeChat</button>
+          <button class="selection-modal-add" id="modalSelection" type="button" aria-label="Add to price list" title="Add to Price List">🛒</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="image-lightbox" id="imageLightbox" aria-hidden="true">
+    <button class="lightbox-close" id="lightboxClose" type="button">×</button>
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev" type="button">‹</button>
+    <img id="lightboxImage" src="" alt="Zoomed product image">
+    <button class="lightbox-nav lightbox-next" id="lightboxNext" type="button">›</button>
+    <div class="lightbox-counter" id="lightboxCounter"></div>
+  </div>
+
+  <aside class="drawer" id="selectionDrawer">
+    <header><div><small>价格预览</small><h2>价格清单 Price List</h2></div><button class="drawer-close" type="button">×</button></header>
+    <div class="drawer-toolbar"><button id="clearSelection" class="clear-drawer" type="button">清空清单 · Clear List</button></div>
+    <div class="drawer-list" id="selectionList"></div>
+    <div class="drawer-empty" id="selectionEmpty">还没有选择产品<br><small>Your price list is empty.</small></div>
+    <footer>
+      <div><span>参考小计 Estimated</span><strong id="selectionSubtotal">$0.00</strong></div>
+      <small id="selectionNote">最终价格、运费和定制费用请通过微信确认。</small>
+      <button class="button primary" id="contactSelection" type="button">微信确认 Contact WeChat</button>
+    </footer>
+  </aside>
+
+  <div class="wechat-popup" id="wechatPopup" role="dialog" aria-modal="true" aria-labelledby="wechatTitle">
+    <div class="wechat-popup-box">
+      <button class="wechat-popup-close" type="button" aria-label="Close">×</button>
+      <span class="wechat-icon">微信</span>
+      <small>NIC MASSAGE SUPPLY</small>
+      <h2 id="wechatTitle">微信咨询 · Contact on WeChat</h2>
+      <div class="wechat-product-context" id="wechatProductContext" hidden></div>
+      <p>添加我们的微信并发送产品名称、所选款式或价格清单截图。</p>
+      <p>Add our WeChat and send the product name, selected option, or a screenshot of your price list.</p>
+      <div class="wechat-id"><span>WeChat ID</span><strong id="wechatId">abv1234</strong></div>
+      <div class="wechat-popup-actions">
+        <button class="button primary" id="copyWechat" type="button">复制微信 ID · Copy ID</button>
+        <button class="button outline" id="copyProductInfo" type="button">复制产品信息 · Copy Product</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" role="status"></div>
+  <script src="js/products.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
