@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Jin Massage Supply — Professional massage and spa products">
+  <title>Jin Massage Supply — 专业按摩用品</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="topbar">满 $149 包邮 · Free shipping on orders over $149 &nbsp; | &nbsp; 微信下单 WeChat: abv1234</div>
+
+  <nav class="site-nav">
+    <div class="nav-inner">
+      <a class="logo" href="#
+      "><span class="logo-mark">J</span><span><strong>Jin Massage Supply</strong><small><br>工厂直供 · 定制服务 · 品类齐全</small></span></a>
+      <button class="mobile-toggle" type="button" aria-label="Open menu">☰</button>
+      <ul class="nav-links" id="dynamicNav"></ul>
+      <div class="nav-actions">
+        <button class="wishlist-open" type="button">♡<b class="wishlist-count">0</b></button>
+        <button class="cart-open" type="button">🛒<b class="cart-count">0</b></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero" id="home">
+      <img src="images/spa-hero-warm.png" alt="Warm professional spa treatment room">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <p>专业按摩与 SPA 用品</p>
+        <h1 class="hero-title"><span>一站式采购</span><span>配齐门店所需用品</span></h1>
+        <div class="hero-cn">按摩床、床罩、毛巾、装饰用品及定制产品</div>
+        <div class="hero-en">Massage tables, linens, decor and custom products.</div>
+        <div class="hero-buttons">
+          <button class="button primary show-all" type="button">查看所有产品 View All Products</button>
+          <a class="button secondary" href="#how-to-order">微信下单 Order via WeChat</a>
+        </div>
+        <div class="hero-benefits"><span>✓ Factory Direct</span><span>✓ Custom Service</span><span>✓ US Shipping</span></div>
+      </div>
+    </section>
+
+    <section class="category-shortcuts">
+      <button data-category="massage-bed"><span>Massage Table</span><strong>按摩床</strong><small>Shop now →</small></button>
+      <button data-category="massage-cover"><span>Covers & Sheets</span><strong>床罩床单</strong><small>Shop now →</small></button>
+      <button data-category="decorations"><span>Decorations</span><strong>实用装饰</strong><small>Shop now →</small></button>
+    </section>
+
+    <section class="products-section" id="products">
+      <div class="section-inner">
+        <div class="section-heading">
+          <div><p>产品中心 · PRODUCT CENTER</p><h2 id="productsTitle">所有产品 <span>All Products</span></h2><small id="resultCount"></small></div>
+          <button class="button outline show-all" type="button">查看全部 View All</button>
+        </div>
+       <!-- <div class="category-tabs" id="categoryTabs"></div>-->
+        <div class="tools">
+          <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="搜索产品 Search products..."></label>
+          <select id="sortSelect"><option value="featured">推荐 Featured</option><option value="low">价格低到高 Price: Low to High</option><option value="high">价格高到低 Price: High to Low</option><option value="name">名称 Name</option></select>
+          <label class="stock"><input id="stockOnly" type="checkbox"> 仅显示有货 In stock only</label>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+        <div class="empty" id="emptyState" hidden><h3>没有找到产品 · No products found</h3><button class="button outline reset" type="button">清除筛选 Clear Filters</button></div>
+        <nav class="pagination" id="pagination"></nav>
+      </div>
+    </section>
+
+    <section class="order-section" id="how-to-order">
+      <div class="section-inner">
+        <div class="order-heading"><p>简单方便 · SIMPLE & EASY</p><h2>如何购买 <span>How to Order</span></h2></div>
+        <div class="order-steps">
+          <article><b>01</b><h3>选择产品</h3><p>Choose the products you need.</p></article>
+          <article><b>02</b><h3>加入购物车</h3><p>Add products to your cart.</p></article>
+          <article><b>03</b><h3>微信确认订单</h3><p>Contact us on WeChat to confirm.</p></article>
+        </div>
+        <div class="wechat-card"><span>微信下单 · ORDER VIA WECHAT</span><strong>abv1234</strong><p>请发送购物车截图 · Send us a screenshot of your cart</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="footer-inner"><div><strong>Jin Massage Supply</strong><p>专业按摩与SPA用品 · Professional massage and spa supplies.</p></div><div><p>WeChat: abv1234</p><p>orders@jinsupply.com</p></div></div><div class="copyright">© 2026 Jin Massage Supply. 版权所有 All rights reserved.</div></footer>
+
+  <div class="overlay"></div>
+  <div class="modal" id="quickView">
+    <div class="modal-box">
+      <button class="modal-close" type="button" aria-label="Close product detail">×</button>
+
+      <div class="modal-gallery">
+        <div class="modal-main-image" id="modalMainImage">
+          <img id="modalImage" src="" alt="" title="Click to zoom">
+          <div id="modalFallback" hidden></div>
+          <span class="zoom-label">⌕ Zoom</span>
+        </div>
+        <div class="modal-thumbnails" id="modalThumbnails" aria-label="Product images"></div>
+      </div>
+
+      <div class="modal-info">
+        <small id="modalCategory"></small>
+        <h2 id="modalName"></h2>
+        <div class="modal-price" id="modalPrice"></div>
+        <h3>产品描述 · Description</h3>
+        <p id="modalDescription"></p>
+        <ul id="modalFeatures"></ul>
+        <div class="modal-actions">
+          <button class="button primary" id="modalCart" type="button">加入购物车 Add to Cart</button>
+          <button id="modalWish" type="button" aria-label="Add to wishlist">♡</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="image-lightbox" id="imageLightbox" aria-hidden="true">
+    <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close zoom">×</button>
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev" type="button" aria-label="Previous image">‹</button>
+    <img id="lightboxImage" src="" alt="Zoomed product image">
+    <button class="lightbox-nav lightbox-next" id="lightboxNext" type="button" aria-label="Next image">›</button>
+    <div class="lightbox-counter" id="lightboxCounter"></div>
+  </div>
+
+  <aside class="drawer" id="cartDrawer"><header><div><small>您的选择</small><h2>购物车 Cart</h2></div><button class="drawer-close">×</button></header><div class="drawer-list" id="cartList"></div><div class="drawer-empty" id="cartEmpty">购物车是空的<br><small>Your cart is empty.</small></div><footer><div><span>小计 Subtotal</span><strong id="subtotal">$0.00</strong></div><a class="button primary" href="#how-to-order">联系购买 Contact to Order</a></footer></aside>
+  <aside class="drawer" id="wishlistDrawer"><header><div><small>已保存</small><h2>心愿单 Wishlist</h2></div><button class="drawer-close">×</button></header><div class="drawer-list" id="wishlistList"></div><div class="drawer-empty" id="wishlistEmpty">还没有收藏产品<br><small>Your wishlist is empty.</small></div></aside>
+  <div class="toast" role="status"></div>
+
+  <script src="js/products.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
