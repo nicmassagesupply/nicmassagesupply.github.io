@@ -172,17 +172,17 @@ function productShareUrl(productId) {
 }
 
 async function shareCurrentProduct() {
+function shareCurrentProduct() {
   const currentProduct = product(state.current);
 
   if (!currentProduct) return;
 
   const shareUrl = productShareUrl(currentProduct.id);
 
-  const shareData = {
-    title: `${currentProduct.nameZh} · ${currentProduct.nameEn}`,
-    text: `${currentProduct.nameZh} · ${currentProduct.nameEn}`,
-    url: shareUrl
-  };
+  copyText(
+    shareUrl,
+    "产品链接已复制 · Product link copied"
+  );
 
   try {
     if (navigator.share) {
