@@ -13,7 +13,7 @@
 
 /* 1. CẤU HÌNH VÀ TRẠNG THÁI ------------------------------------ */
 const isProductsPage = document.body.dataset.page === "products";
-const WECHAT_ID = "abv1234";
+const WECHAT_ID = "nic1234";
 const BRAND_NAME = "Nic Massage Supply";
 
 const state = {
@@ -163,6 +163,44 @@ function minimumPrice(p) {
   return known.length ? Math.min(...known) : 0;
 }
 
+function productShareUrl(productId) {
+  const url = new URL("products.html", window.location.href);
+
+  url.searchParams.set("product", productId);
+
+  return url.href;
+}
+
+async function shareCurrentProduct() {
+  const currentProduct = product(state.current);
+
+  if (!currentProduct) return;
+
+  const shareUrl = productShareUrl(currentProduct.id);
+
+  const shareData = {
+    title: `${currentProduct.nameZh} · ${currentProduct.nameEn}`,
+    text: `${currentProduct.nameZh} · ${currentProduct.nameEn}`,
+    url: shareUrl
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareUrl);
+
+    toast("产品链接已复制 · Product link copied");
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      console.error("Unable to share product:", error);
+      toast("无法分享产品 · Unable to share product");
+    }
+  }
+}
+
 /* 3. MENU, BỘ LỌC VÀ DANH SÁCH SẢN PHẨM ----------------------- */
 function renderNav() {
   const nav = $("#dynamicNav");
@@ -251,13 +289,129 @@ function productCard(p) {
 }
 
 /* SẢN PHẨM NỔI BẬT THEO NHÓM LỚN TRÊN TRANG CHỦ -------------- */
-const FEATURED_GROUP_ORDER = [
-  "massage",
-  "decorations",
-  "customized"
-];
-
 const FEATURED_PRODUCTS_PER_GROUP = 4;
+
+const FEATURED_GROUP_COPY = {
+  massage: {
+    zh: "按摩床、床品、枕垫与理疗用品",
+    en: "Tables, linens, pillows and treatment essentials"
+  },
+  decorations: {
+    zh: "隔断、墙饰、流水摆件与空间装饰",
+    en: "Partitions, wall décor, water features and finishing touches"
+  },
+  customized: {
+    zh: "家具、隔间、印刷品与门店定制",
+    en: "Custom furniture, partitions, print and store branding"
+  },
+  gift: {
+    zh: "适合门店零售与客户赠礼的精选产品",
+    en: "Thoughtful retail and client gift ideas"
+  },
+  gifts: {
+    zh: "适合门店零售与客户赠礼的精选产品",
+    en: "Thoughtful retail and client gift ideas"
+  },
+  other: {
+    zh: "补充门店日常运营所需的实用产品",
+    en: "Useful extras for everyday spa operations"
+  }
+};
+
+function groupCopy(groupKey, groupInfo) {
+  return FEATURED_GROUP_COPY[groupKey] || {
+    zh: `精选${groupInfo?.zh || "产品"}，快速了解系列内容`,
+    en: `Representative products from ${groupInfo?.en || "this collection"}`
+  };
+}
+
+function selectRepresentativeProducts(groupKey, limit = FEATURED_PRODUCTS_PER_GROUP) {
+  const groupProducts = PRODUCTS
+    .filter(item => item.group === groupKey)
+    .sort((a, b) =>
+      Number(b.featured === true) - Number(a.featured === true) ||
+      a.id - b.id
+    );
+
+  const featured = groupProducts.filter(item => item.featured === true);
+  const chosen = [];
+  const chosenIds = new Set();
+  const chosenCategories = new Set();
+
+  const add = item => {
+    if (!item || chosenIds.has(item.id) || chosen.length >= limit) return;
+    chosen.push(item);
+    chosenIds.add(item.id);
+    chosenCategories.add(item.category || `product-${item.id}`);
+  };
+
+  // Ưu tiên một sản phẩm featured cho mỗi phân loại nhỏ khác nhau.
+  featured.forEach(item => {
+    const categoryKey = item.category || `product-${item.id}`;
+    if (!chosenCategories.has(categoryKey)) add(item);
+  });
+
+  // Nếu chưa đủ 4, lấy thêm phân loại nhỏ chưa xuất hiện dù chưa đánh dấu featured.
+  groupProducts.forEach(item => {
+    const categoryKey = item.category || `product-${item.id}`;
+    if (!chosenCategories.has(categoryKey)) add(item);
+  });
+
+  // Cuối cùng mới bổ sung sản phẩm còn lại để luôn đủ số lượng khi có thể.
+  featured.forEach(add);
+  groupProducts.forEach(add);
+
+  return chosen.slice(0, limit);
+}
+
+function featuredProductCard(p) {
+  const options = productOptions(p);
+  const minPrice = minimumPrice(p);
+  const price = minPrice > 0 ? money(minPrice) : priceText(0);
+  const minimum = minimumOrderQty(p);
+  const unit = productUnit(p);
+
+  return `<article class="product-card featured-product-card" data-id="${p.id}" tabindex="0">
+    <div class="product-media featured-product-media">
+      <img src="${p.image}" alt="${p.nameEn || p.nameZh}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false;this.closest('.product-card').classList.add('has-image-error')">
+      <div class="image-fallback" hidden><span>${p.nameEn || p.nameZh}</span><small>Missing image · ID: ${p.id}</small></div>
+
+      ${p.badgeZh || p.badgeEn
+        ? `<span class="badge">${[p.badgeZh, p.badgeEn].filter(Boolean).join(" · ")}</span>`
+        : ""}
+
+      ${minimum > 1
+        ? `<span class="featured-moq">${minimum}${unit}起订</span>`
+        : ""}
+
+      <span class="featured-image-cta">查看详情 · View Details</span>
+    </div>
+
+    <div class="featured-card-info">
+      <span class="featured-category-tag">${p.categoryZh || ""}${p.categoryEn ? `<small>${p.categoryEn}</small>` : ""}</span>
+
+      <h4>
+        ${p.nameZh}
+        ${p.nameEn ? `<span>${p.nameEn}</span>` : ""}
+      </h4>
+
+      <div class="featured-card-footer">
+        <div class="featured-price">
+          ${options.length > 1 ? '<small class="price-from">From</small>' : ""}
+          <div><span>${price}</span>${Number(minPrice) > 0 ? `<small>/ ${unit}</small>` : ""}</div>
+        </div>
+
+        <button
+          class="featured-view"
+          data-action="quick"
+          type="button"
+          aria-label="View ${p.nameEn || p.nameZh}"
+          title="View details"
+        >↗</button>
+      </div>
+    </div>
+  </article>`;
+}
 
 function renderFeaturedGroups() {
   const container = $("#featuredGroups");
@@ -267,46 +421,58 @@ function renderFeaturedGroups() {
   if (!container) return;
 
   let totalProducts = 0;
+  let visibleGroups = 0;
 
-  const html = FEATURED_GROUP_ORDER.map(groupKey => {
-    const groupInfo = CATEGORY_MENU.find(group => group.key === groupKey);
-
-    const products = PRODUCTS
-      .filter(item =>
-        item.group === groupKey &&
-        item.featured === true
-      )
-      .sort((a, b) => a.id - b.id)
-      .slice(0, FEATURED_PRODUCTS_PER_GROUP);
+  const html = CATEGORY_MENU.map((groupInfo, groupIndex) => {
+    const products = selectRepresentativeProducts(groupInfo.key);
 
     if (!products.length) return "";
 
+    visibleGroups += 1;
     totalProducts += products.length;
 
-    return `
-      <section class="featured-group">
-        <div class="featured-group-heading">
-          <div>
-            <p class="featured-group-label">
-              精选系列 · FEATURED COLLECTION
-            </p>
+    const copy = groupCopy(groupInfo.key, groupInfo);
+    const categoryChips = [...new Map(
+      products.map(item => [
+        item.category || `product-${item.id}`,
+        {
+          zh: item.categoryZh || "",
+          en: item.categoryEn || ""
+        }
+      ])
+    ).values()];
 
-            <h3 class="featured-group-title">
-              ${groupInfo?.zh || groupKey}
-              <span>${groupInfo?.en || groupKey}</span>
-            </h3>
+    return `
+      <section class="featured-group" data-featured-group="${groupInfo.key}">
+        <div class="featured-group-heading">
+          <div class="featured-group-heading-main">
+            <span class="featured-group-number">${String(groupIndex + 1).padStart(2, "0")}</span>
+
+            <div>
+              <p class="featured-group-label">精选系列 · FEATURED COLLECTION</p>
+
+              <h3 class="featured-group-title">
+                ${groupInfo.zh}
+                <span>${groupInfo.en}</span>
+              </h3>
+
+              <p class="featured-group-description">
+                ${copy.zh}
+                <span>${copy.en}</span>
+              </p>
+            </div>
           </div>
 
           <a
             class="featured-group-link"
-            href="products.html?category=${encodeURIComponent(groupKey)}"
+            href="products.html?category=${encodeURIComponent(groupInfo.key)}"
           >
-            查看更多 View More →
+            浏览全部 View Collection →
           </a>
         </div>
 
         <div class="featured-group-grid">
-          ${products.map(productCard).join("")}
+          ${products.map(featuredProductCard).join("")}
         </div>
       </section>
     `;
@@ -316,7 +482,7 @@ function renderFeaturedGroups() {
 
   if (resultCount) {
     resultCount.textContent =
-      `精选 ${totalProducts} 件产品 · ${totalProducts} featured products`;
+      `${visibleGroups} 个系列 · ${totalProducts} 款代表产品 · ${visibleGroups} collections`;
   }
 
   if (emptyState) {
@@ -778,9 +944,67 @@ document.addEventListener("click", event => {
   if (event.target.closest("#lightboxNext")) moveLightbox(1);
 });
 
+function productShareUrl(productId) {
+  const url = new URL("products.html", window.location.href);
+
+  url.searchParams.set("product", productId);
+
+  return url.href;
+}
+
+async function shareCurrentProduct() {
+  const currentProduct = product(state.current);
+
+  if (!currentProduct) return;
+
+  const shareUrl = productShareUrl(currentProduct.id);
+
+  const title = [
+    currentProduct.nameZh,
+    currentProduct.nameEn
+  ].filter(Boolean).join(" · ");
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: title,
+        text: title,
+        url: shareUrl
+      });
+
+      return;
+    }
+
+    copyText(
+      shareUrl,
+      "产品链接已复制 · Product link copied"
+    );
+  } catch (error) {
+    if (error.name === "AbortError") return;
+
+    copyText(
+      shareUrl,
+      "产品链接已复制 · Product link copied"
+    );
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   renderNav();
 
+  const sharedProductId = Number(
+  new URLSearchParams(window.location.search).get("product")
+);
+
+if (sharedProductId) {
+  const sharedProduct = product(sharedProductId);
+
+  if (sharedProduct) {
+    openModal(sharedProduct);
+  }
+}
+
+  
   const queryCategory = new URLSearchParams(location.search).get("category");
   if (queryCategory && allCats().some(item => item.key === queryCategory)) state.category = queryCategory;
 
@@ -830,6 +1054,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   $("#modalSelection")?.addEventListener("click", () => addToSelection(state.current, state.currentOptionIndex));
+  $("#shareProduct")?.addEventListener("click", shareCurrentProduct);
   $("#clearSelection")?.addEventListener("click", clearSelection);
   $("#contactSelection")?.addEventListener("click", () => {
     openWechat(null, null, selectionSummary());
@@ -862,6 +1087,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("keydown", event => {
+    const focusedCard = event.target.closest?.(".product-card");
+    if (focusedCard && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      openModal(product(focusedCard.dataset.id));
+      return;
+    }
+
     if (event.key === "Escape") {
       closeAll();
       closeMobile();
