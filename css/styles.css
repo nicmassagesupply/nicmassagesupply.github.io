@@ -2370,3 +2370,235 @@ footer a { color:inherit; }
 
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
+
+/* ================================================================
+   HOME PAGE ONLY — FEATURED PRODUCTS IN FRAMED GROUPS
+   Chỉ áp dụng cho trang chủ, không ảnh hưởng products.html
+================================================================ */
+
+body:not([data-page="products"]) .featured-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 34px;
+}
+
+body:not([data-page="products"]) .featured-group {
+    width: 100%;
+    padding: 24px;
+    border: 1px solid #e6ddd2;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(74, 55, 43, .06);
+}
+
+body:not([data-page="products"]) .featured-group-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee6dc;
+}
+
+body:not([data-page="products"]) .featured-group-label {
+    margin: 0 0 5px;
+    color: #728041;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.15px;
+}
+
+body:not([data-page="products"]) .featured-group-title {
+    margin: 0;
+    color: var(--brown);
+    font: 600 28px/1.2 var(--display);
+}
+
+body:not([data-page="products"]) .featured-group-title span {
+    margin-left: 7px;
+    color: var(--muted);
+    font: 500 15px/1.3 var(--body);
+}
+
+body:not([data-page="products"]) .featured-group-link {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border: 1px solid #dfe6cf;
+    border-radius: 999px;
+    background: #f8faF3;
+    color: #607b24;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+body:not([data-page="products"]) .featured-group-link:hover {
+    border-color: var(--olive);
+    background: var(--olive);
+    color: #fff;
+}
+
+body:not([data-page="products"]) .featured-group-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 235px));
+    justify-content: center;
+    gap: 18px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-card {
+    width: 100%;
+    max-width: 235px;
+    margin: 0 auto;
+    border-radius: 14px;
+    box-shadow: 0 5px 16px rgba(74, 55, 43, .06);
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-card:hover {
+    transform: translateY(-3px);
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-media {
+    aspect-ratio: 4 / 3;
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-info {
+    padding: 15px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-info h3 {
+    min-height: 54px;
+    margin-top: 6px;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-info h3 span {
+    margin-top: 3px;
+    font-size: 12px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .price {
+    font-size: 21px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .product-card-actions {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 7px;
+    margin-top: 10px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .contact-product {
+    min-height: 46px;
+}
+
+body:not([data-page="products"]) .featured-group-grid .selection-card-add {
+    min-height: 44px;
+}
+
+
+/* Laptop nhỏ */
+@media (max-width: 1180px) and (min-width: 901px) {
+    body:not([data-page="products"]) .featured-group-grid {
+        grid-template-columns: repeat(3, minmax(0, 245px));
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .product-card {
+        max-width: 245px;
+    }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    body:not([data-page="products"]) .featured-group {
+        padding: 21px;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid {
+        grid-template-columns: repeat(2, minmax(0, 250px));
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .product-card {
+        max-width: 250px;
+    }
+}
+
+/* Điện thoại: card nhỏ, vuốt ngang và lộ một phần card tiếp theo */
+@media (max-width: 620px) {
+    body:not([data-page="products"]) .featured-groups {
+        gap: 28px;
+    }
+
+    body:not([data-page="products"]) .featured-group {
+        padding: 16px 13px;
+        border-radius: 16px;
+    }
+
+    body:not([data-page="products"]) .featured-group-heading {
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding-bottom: 11px;
+    }
+
+    body:not([data-page="products"]) .featured-group-label {
+        font-size: 8px;
+        letter-spacing: .8px;
+    }
+
+    body:not([data-page="products"]) .featured-group-title {
+        font-size: 22px;
+    }
+
+    body:not([data-page="products"]) .featured-group-title span {
+        display: block;
+        margin: 3px 0 0;
+        font-size: 12px;
+    }
+
+    body:not([data-page="products"]) .featured-group-link {
+        padding: 7px 9px;
+        font-size: 9px;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid {
+        display: grid;
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(230px, 76%);
+        justify-content: initial;
+        gap: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 2px 8px 12px 0;
+        scroll-padding-inline: 0;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        overscroll-behavior-inline: contain;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .product-card {
+        max-width: none;
+        scroll-snap-align: start;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .product-info {
+        padding: 13px;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .product-info h3 {
+        min-height: 50px;
+        font-size: 15px;
+    }
+
+    body:not([data-page="products"]) .featured-group-grid .price {
+        font-size: 19px;
+    }
+}
+
