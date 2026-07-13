@@ -183,6 +183,7 @@ function shareCurrentProduct() {
     shareUrl,
     "产品链接已复制 · Product link copied"
   );
+}
 
   try {
     if (navigator.share) {
