@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body data-page="home">
-  <div class="topbar">满 $280 包邮 · Free shipping on orders over $280 &nbsp; | &nbsp; 微信下单 WeChat: abv1234</div>
+  <div class="topbar">满 $280 包邮 · Free shipping on orders over $149 &nbsp; | &nbsp; 微信下单 WeChat: abv1234</div>
 
   <nav class="site-nav">
     <div class="nav-inner">
@@ -39,23 +39,40 @@
       </div>
     </section>
 
-    <section class="category-shortcuts">
+  <!--  <section class="category-shortcuts">
       <a href="products.html?category=massage-bed"><span>Massage Table</span><strong>按摩床</strong><small>Shop now →</small></a>
-      <a href="products.html?category=massage-cover"><span>Covers & Sheets</span><strong>床罩床单</strong><small>Shop now →</small></a>
+      <a href="products.html?category=massage-sheet"><span>Covers & Sheets</span><strong>床罩床单</strong><small>Shop now →</small></a>
       <a href="products.html?category=decorations"><span>Decorations</span><strong>实用装饰</strong><small>Shop now →</small></a>
-    </section>
+    </section> -->
 
-    <section class="products-section" id="products">
-      <div class="section-inner">
-        <div class="section-heading">
-          <div><p>产品中心 · PRODUCT CENTER</p><h2 id="productsTitle">精选产品 <span>Featured Products</span></h2><small id="resultCount"></small></div>
-          <a class="button outline" href="products.html">查看全部 View All</a>
-        </div>
-        <div class="product-grid" id="productGrid"></div>
-        <div class="empty" id="emptyState" hidden><h3>没有找到产品 · No products found</h3></div>
-        <nav class="pagination" id="pagination"></nav>
+ <section class="products-section" id="products">
+  <div class="section-inner">
+
+    <div class="section-heading">
+      <div>
+        <p>产品中心 · PRODUCT CENTER</p>
+
+        <h2 id="productsTitle">
+          精选产品 <span>Featured Products</span>
+        </h2>
+
+        <small id="resultCount"></small>
       </div>
-    </section>
+
+      <a class="button outline" href="products.html">
+        查看全部 View All
+      </a>
+    </div>
+
+    <!-- Các nhóm sản phẩm nổi bật sẽ được JS tạo tại đây -->
+    <div class="featured-groups" id="featuredGroups"></div>
+
+    <div class="empty" id="emptyState" hidden>
+      <h3>没有找到产品 · No products found</h3>
+    </div>
+
+  </div>
+</section>
 
     <section class="order-section" id="how-to-order">
       <div class="section-inner">
