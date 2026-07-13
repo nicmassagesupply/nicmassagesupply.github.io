@@ -250,6 +250,80 @@ function productCard(p) {
   </article>`;
 }
 
+/* SẢN PHẨM NỔI BẬT THEO NHÓM LỚN TRÊN TRANG CHỦ -------------- */
+const FEATURED_GROUP_ORDER = [
+  "massage",
+  "decorations",
+  "customized"
+];
+
+const FEATURED_PRODUCTS_PER_GROUP = 4;
+
+function renderFeaturedGroups() {
+  const container = $("#featuredGroups");
+  const emptyState = $("#emptyState");
+  const resultCount = $("#resultCount");
+
+  if (!container) return;
+
+  let totalProducts = 0;
+
+  const html = FEATURED_GROUP_ORDER.map(groupKey => {
+    const groupInfo = CATEGORY_MENU.find(group => group.key === groupKey);
+
+    const products = PRODUCTS
+      .filter(item =>
+        item.group === groupKey &&
+        item.featured === true
+      )
+      .sort((a, b) => a.id - b.id)
+      .slice(0, FEATURED_PRODUCTS_PER_GROUP);
+
+    if (!products.length) return "";
+
+    totalProducts += products.length;
+
+    return `
+      <section class="featured-group">
+        <div class="featured-group-heading">
+          <div>
+            <p class="featured-group-label">
+              精选系列 · FEATURED COLLECTION
+            </p>
+
+            <h3 class="featured-group-title">
+              ${groupInfo?.zh || groupKey}
+              <span>${groupInfo?.en || groupKey}</span>
+            </h3>
+          </div>
+
+          <a
+            class="featured-group-link"
+            href="products.html?category=${encodeURIComponent(groupKey)}"
+          >
+            查看更多 View More →
+          </a>
+        </div>
+
+        <div class="featured-group-grid">
+          ${products.map(productCard).join("")}
+        </div>
+      </section>
+    `;
+  }).filter(Boolean).join("");
+
+  container.innerHTML = html;
+
+  if (resultCount) {
+    resultCount.textContent =
+      `精选 ${totalProducts} 件产品 · ${totalProducts} featured products`;
+  }
+
+  if (emptyState) {
+    emptyState.hidden = totalProducts > 0;
+  }
+}
+
 function renderProducts() {
   const grid = $("#productGrid");
   if (!grid) return;
@@ -710,7 +784,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const queryCategory = new URLSearchParams(location.search).get("category");
   if (queryCategory && allCats().some(item => item.key === queryCategory)) state.category = queryCategory;
 
-  renderProducts();
+  if (isProductsPage) {
+    renderProducts();
+  } else {
+    renderFeaturedGroups();
+  }
+
   renderSelection();
 
   $("#searchInput")?.addEventListener("input", event => {
