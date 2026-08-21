@@ -13,7 +13,7 @@
 
 /* 1. CẤU HÌNH VÀ TRẠNG THÁI ------------------------------------ */
 const isProductsPage = document.body.dataset.page === "products";
-const WECHAT_ID = "nic1234";
+const WECHAT_ID = "aidi242";
 const BRAND_NAME = "Nic Massage Supply";
 
 const state = {
